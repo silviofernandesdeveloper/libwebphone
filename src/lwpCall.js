@@ -144,6 +144,13 @@ export default class {
     }
   }
 
+  remoteURIUser() { 
+    const session = this._getSession();
+    if (session) {
+      return session._dialog._remote_uri.user;
+    }
+  }
+
   terminate() {
     if (this.hasSession()) {
       if (this.isEstablished()) {
@@ -193,17 +200,19 @@ export default class {
     }
   }
 
-  mute(options = {}) {
-    options = lwpUtils.merge(options, { audio: true, video: true });
-
+  /**
+   * @param {{audio: boolean, video: boolean}} options - The channels you want to mute
+   */
+  mute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
       this._getSession().mute(options);
     }
   }
 
-  unmute(options = {}) {
-    options = lwpUtils.merge(options, { audio: true, video: true });
-
+  /**
+   * @param {{audio: boolean, video: boolean}} options - The channels you want to unmute
+   */
+  unmute(options = { audio: true, video: true }) {
     if (this.hasSession()) {
       this._getSession().unmute(options);
     }
@@ -292,10 +301,10 @@ export default class {
     }
   }
 
-  sendDTMF(signal) {
+  sendDTMF(signal, options) {
     if (this.hasSession()) {
-      this._getSession().sendDTMF(signal);
-      this._emit("send.dtmf", this, signal);
+      this._getSession().sendDTMF(signal, options);
+      this._emit("send.dtmf", this, signal, options);
     }
   }
 
@@ -393,6 +402,8 @@ export default class {
 
   summary() {
     const direction = this.getDirection();
+    const { audio: isAudioMuted, video: isVideoMuted } = this.isMuted(true);
+
     return {
       callId: this.getId(),
       hasSession: this.hasSession(),
@@ -400,7 +411,8 @@ export default class {
       established: this.isEstablished(),
       ended: this.isEnded(),
       held: this.isOnHold(),
-      muted: this.isMuted(),
+      isAudioMuted,
+      isVideoMuted,
       primary: this.isPrimary(),
       inTransfer: this.isInTransfer(),
       direction: direction,
@@ -411,7 +423,53 @@ export default class {
     };
   }
 
+  getCustomHeaders() {
+    const session = this._getSession();
+    const request = session._request;
+    if (request && request.headers) {
+      return Object.keys(request.headers).reduce((customHeaders, headerName) => {
+        // make sure it's a custom header
+        if (headerName.startsWith('X-')) {
+          const headerValue = request.headers[headerName];
+          if (headerValue && Array.isArray(headerValue)) {
+            customHeaders[headerName] = headerValue.map(header => header.raw).toString();
+          }
+        }
+        return customHeaders;
+      }, {})
+    }
+  }
+
   /** Init functions */
+
+  _initMediaElement(elementKind, deviceKind) {
+    const element = document.createElement(elementKind);
+
+    if (elementKind === "video") {
+      try {
+        element.setAttribute('webkit-playsinline', 'webkit-playsinline');
+        element.setAttribute('playsinline', 'playsinline');
+      } catch (error) {
+        this._emit("error", error);
+      }
+    }
+
+    if (this.hasSession() && element.setSinkId !== undefined) {
+      const preferedDevice = this._libwebphone
+        .getMediaDevices()
+        .getPreferedDevice(deviceKind);
+
+      if (preferedDevice) {
+        try {
+          element.setSinkId(preferedDevice.id);
+        } catch (error) {
+         this._emit("error", error);
+        }
+      }
+    }
+
+    return element;
+  }
 
   _initProperties() {
     this._primary = false;
@@ -430,8 +488,8 @@ export default class {
           video: false,
         },
         elements: {
-          audio: document.createElement("audio"),
-          video: document.createElement("video"),
+          audio: this._initMediaElement("audio", "audiooutput"),
+          video: this._initMediaElement("video", "videoinput"),
         },
       },
       local: {
@@ -441,8 +499,8 @@ export default class {
           video: false,
         },
         elements: {
-          audio: document.createElement("audio"),
-          video: document.createElement("video"),
+          audio: this._initMediaElement("audio", "audiooutput"),
+          video: this._initMediaElement("video", "videoinput"),
         },
       },
     };
@@ -495,12 +553,8 @@ export default class {
     this._libwebphone.on(
       "mediaDevices.video.input.changed",
       (lwp, mediaDevices, newTrack) => {
-        if (this.hasSession()) {
-          if (newTrack) {
-            this.replaceSenderTrack(newTrack.track);
-          } else {
-            this.removeSenderTrack("video");
-          }
+        if (this.hasSession() && newTrack) {
+          this.replaceSenderTrack(newTrack.track);
         }
       }
     );
@@ -509,8 +563,12 @@ export default class {
       (lwp, mediaDevices, preferedDevice) => {
         Object.keys(this._streams.remote.elements).forEach((kind) => {
           const element = this._streams.remote.elements[kind];
-          if (element) {
-            element.setSinkId(preferedDevice.id);
+          if (element && element.setSinkId !== undefined) {
+            try {
+              element.setSinkId(preferedDevice.id);
+            } catch (error) {
+              this._emit("error", error);
+            }
           }
         });
       }
@@ -538,6 +596,13 @@ export default class {
     if (this.hasSession()) {
       this._getSession().on("progress", (...event) => {
         this._emit("progress", this, ...event);
+      });
+      this._getSession().on("connecting", () => {
+        // Mute video and audio after the local media stream is added into RTCSession
+        this._getSession().mute({
+          audio: this._config.startWithAudioMuted,
+          video: this._config.startWithVideoMuted,
+        });
       });
       this._getSession().on("confirmed", (...event) => {
         this._answerTime = new Date();
@@ -716,8 +781,10 @@ export default class {
             break;
           case "local":
             peerConnection.getSenders().forEach((peer) => {
-              if (peer.track) {
-                peerTracks.push(peer.track);
+              const track = peer.track;
+              if (track) {
+                track.enabled = !this.isMuted(true)[track.kind];
+                peerTracks.push(track);
               }
             });
             break;

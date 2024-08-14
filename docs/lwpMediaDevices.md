@@ -66,13 +66,26 @@ If the provided device kind is already muted, unmute it. Otherwise if the device
 | ---------- | ------ | ------- | -------------------------------------------------------------------- |
 | deviceKind | string |         | The device kind to toggle mute (audiooutput, audioinput, videoinput) |
 
+#### startScreenCapture(options, useDisplayMedia)
+
+Replaces the current video stream with the contents of a display or portion thereof (a window).
+
+| Name            | Type                                                                                              | Default | Description                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| options         | [MediaStreamConstraints](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints) |         | Object specifying requirements for the returned MediaStream                                                                                                                                          |
+| useDisplayMedia | boolean                                                                                           | true    | Use [getDisplayMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) over [getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) |
+
+#### stopScreenCapture()
+
+Stops Screen Capture and enables previously selected videoinput
+
 #### getMediaElement(deviceKind)
 
 Get the HTML media element linked to the provided device kind.
 
 | Name       | Type   | Default | Description                                                                            |
 | ---------- | ------ | ------- | -------------------------------------------------------------------------------------- |
-| deviceKind | string |         | The device kind linked to the HTML media element (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind linked to the HTML media element (ringoutput, audiooutput, audioinput, videoinput) |
 
 Returns:
 
@@ -86,7 +99,7 @@ Get the prefered device for the given device kind.
 
 | Name       | Type   | Default | Description                                                   |
 | ---------- | ------ | ------- | ------------------------------------------------------------- |
-| deviceKind | string |         | The device kind to mute (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind to get (ringoutput, audiooutput, audioinput, videoinput) |
 
 Returns:
 
@@ -100,7 +113,7 @@ For the provided device kind attmpet to switch to the provided device id, updati
 
 | Name       | Type   | Default | Description                                                     |
 | ---------- | ------ | ------- | --------------------------------------------------------------- |
-| deviceKind | string |         | The device kind to switch (audiooutput, audioinput, videoinput) |
+| deviceKind | string |         | The device kind to switch (ringoutput, audiooutput, audioinput, videoinput) |
 | deviceId   | string |         | The device id to switch to                                      |
 
 #### refreshAvailableDevices()
@@ -116,6 +129,7 @@ Re-paint / update all render targets.
 | Key         | Default (en)             | Description                                                                          |
 | ----------- | ------------------------ | ------------------------------------------------------------------------------------ |
 | none        | None                     | Used as the text for a 'null' selection that can be used to disable that device kind |
+| ringoutput  | Speaker                  | Used to label the selector for the ring audio output device                          |
 | audiooutput | Speaker                  | Used to label the selector for the audio output device                               |
 | audioinput  | Microphone               | Used to label the selector for the audio input device                                |
 | videoinput  | Camera                   | Used to lable the selector for the video input device                                |
@@ -125,6 +139,13 @@ Re-paint / update all render targets.
 
 | Name                                    | Type                                                                                              | Default                            | Description                                                                                                                                                                                                                                             |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ringoutput.enabled                     | boolean                                                                                           | true if sinkId in HtmlMediaElement | Enables ringing output device selection                                                                                                                                                                                                                   |
+| ringoutput.show                        | boolean                                                                                           | true                               | Should the default template show the ringing output device selection                                                                                                                                                                                            |
+| ringoutput.preferedDeviceIds           | array of strings                                                                                  | []                                 | The prefered device ids in order of precedence                                                                                                                                                                                                          |
+| ringoutput.mediaElement.create         | boolean                                                                                           | true                               | Should a HTMLMediaElement be created                                                                                                                                                                                                                    |
+| ringoutput.mediaElement.elementId      | string                                                                                            |                                    | The HTML id of an existing HTMLMediaElement to use                                                                                                                                                                                                      |
+| ringoutput.mediaElement.element        | HTMLMediaElement                                                                                  |                                    | The HTMLMediaElement linked to the output device selection                                                                                                                                                                                              |
+| ringoutput.mediaElement.initParameters | object                                                                                            | { muted: false }                   | Key - value pairs to apply to the HTMLMediaElement                                                                                                                                                                                                      |
 | audiooutput.enabled                     | boolean                                                                                           | true if sinkId in HtmlMediaElement | Enables audio output device selection                                                                                                                                                                                                                   |
 | audiooutput.show                        | boolean                                                                                           | true                               | Should the default template show the output device selection                                                                                                                                                                                            |
 | audiooutput.preferedDeviceIds           | array of strings                                                                                  | []                                 | The prefered device ids in order of precedence                                                                                                                                                                                                          |
@@ -158,26 +179,29 @@ Re-paint / update all render targets.
 
 | Event                             | Additional Parameters                                                                 | Description                                     |
 | --------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| meidaDevices.created              |                                                                                       | Emitted when the class is instantiated          |
-| meidaDevices.streams.started      | [mediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)           | Emitted when streams are started for a call     |
-| meidaDevices.streams.stopped      |                                                                                       | Emitted when streams are stopped for a call     |
-| meidaDevices.audio.output.element | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
-| meidaDevices.audio.input.element  | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
-| meidaDevices.video.output.element | [HTML Video Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video) | Emitted when the HTML audio element is created  |
-| meidaDevices.getUserMedia.error   | error (exception)                                                                     | Emitted if getUserMedia() throws                |
-| meidaDevices.audio.output.changed | preferedDevice                                                                        | Emitted when the output audio device is changed |
-| meidaDevices.audio.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
-| meidaDevices.video.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
-| meidaDevices.audio.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
-| meidaDevices.video.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
-| meidaDevices.audio.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input audio device is changed  |
-| meidaDevices.video.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input video device is changed  |
-| meidaDevices.audio.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is started         |
-| meidaDevices.video.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is started         |
-| meidaDevices.audio.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is stopped         |
-| meidaDevices.video.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is stopped         |
-
-> NOTE! All standard HTML media events for the audio output, audio input and video input elements are emitted as mediaDevices.{kind}.{direction}.{eventName} with the additional parameters: element (HTML element), event (HTML media event). For example, mediaDevices.audio.input.playing.
+| mediaDevices.created              |                                                                                       | Emitted when the class is instantiated          |
+| mediaDevices.streams.started      | [mediaStream](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)           | Emitted when streams are started for a call     |
+| mediaDevices.streams.stopped      |                                                                                       | Emitted when streams are stopped for a call     |
+| mediaDevices.ring.output.element | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
+| mediaDevices.audio.output.element | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
+| mediaDevices.audio.input.element  | [HTML Audio Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio) | Emitted when the HTML audio element is created  |
+| mediaDevices.video.output.element | [HTML Video Element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video) | Emitted when the HTML audio element is created  |
+| mediaDevices.getUserMedia.error   | error (exception)                                                                     | Emitted if getUserMedia() throws                |
+| mediaDevices.ring.output.changed | preferedDevice                                                                        | Emitted when the ring output audio device is changed |
+| mediaDevices.audio.output.changed | preferedDevice                                                                        | Emitted when the output audio device is changed |
+| mediaDevices.audio.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
+| mediaDevices.video.input.muted    | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is muted           |
+| mediaDevices.audio.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
+| mediaDevices.video.input.unmuted  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the input audio is unmuted         |
+| mediaDevices.audio.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input audio device is changed  |
+| mediaDevices.video.input.changed  | newTrack (lwpUtil.trackParameters), previousTrack (lwpUtil.trackParameters)           | Emitted when the input video device is changed  |
+| mediaDevices.audio.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is started         |
+| mediaDevices.video.input.started  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is started         |
+| mediaDevices.audio.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the audio input is stopped         |
+| mediaDevices.video.input.stopped  | trackParameters (lwpUtil.trackParameters)                                             | Emitted when the video input is stopped         |
+| mediaDevices.loaded               | availableDevices                                                                      | Emitted when the devices are initialized        |
+| mediaDevices.refreshed            | availableDevices                                                                      | Emitted when the devices are changed            |
+> NOTE! All standard HTML media events for the audio ringing, audio output, audio input and video input elements are emitted as mediaDevices.{kind}.{direction}.{eventName} with the additional parameters: element (HTML element), event (HTML media event). For example, mediaDevices.audio.input.playing.
 
 ### Consumed
 
@@ -189,6 +213,7 @@ Re-paint / update all render targets.
 | audioContext.started                  | Invokes \_startMediaElements() |
 | mediaDevices.streams.started          | Invokes updateRenders()        |
 | mediaDevices.streams.stop             | Invokes updateRenders()        |
+| mediaDevices.ring.output.changed      | Invokes updateRenders()        |
 | mediaDevices.audio.output.changed     | Invokes updateRenders()        |
 | mediaDevices.audio.input.changed      | Invokes updateRenders()        |
 | mediaDevices.video.input.changed      | Invokes updateRenders()        |

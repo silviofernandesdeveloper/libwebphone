@@ -58,8 +58,8 @@ export default class extends lwpRenderer {
 
       if (this._config.authentication.jwt) {
         config.authorization_jwt = this._config.authentication.jwt;
-      } 
-        
+      }
+
       if (this._config.authentication.username) {
         config.authorization_user = this._config.authentication.username;
         config.uri = this._config.authentication.username + "@" + this._config.authentication.realm;
@@ -217,12 +217,20 @@ export default class extends lwpRenderer {
     this._emit("redial.update", this, this._redialTarget);
   }
 
-  call(target = null, custom_headers = [], anonymous = false) {
-    let options = {
+  call(target = null, custom_headers = [], options = false) {
+    let defaultOptions = {
       data: { lwpStreamId: lwpUtils.uuid() },
       extraHeaders: [...custom_headers, ...this._config.custom_headers.establish_call],
-      anonymous: anonymous
     };
+    if (typeof options === 'boolean') {
+      defaultOptions.anonymous = options;
+    }
+    if (typeof options === 'object') {
+      defaultOptions.rtcOfferConstraints = {
+        offerToReceiveVideo: options.receive_video || false
+      };
+      defaultOptions.anonymous = options.anonymous || false
+    }
     const mediaDevices = this._libwebphone.getMediaDevices();
     const callList = this._libwebphone.getCallList();
 
@@ -238,18 +246,18 @@ export default class extends lwpRenderer {
 
     if (mediaDevices) {
       mediaDevices
-        .startStreams(options.data.lwpStreamId)
+        .startStreams(defaultOptions.data.lwpStreamId)
         .then((streams) => {
-          options = lwpUtils.merge(options, {
+          options = lwpUtils.merge(defaultOptions, {
             mediaStream: streams,
           });
-          this._call(target, options);
+          this._call(target, defaultOptions);
         })
         .catch((error) => {
           this._emit("call.failed", this, error);
         });
     } else {
-      this._call(target, options);
+      this._call(target, defaultOptions);
     }
   }
 
@@ -320,6 +328,9 @@ export default class extends lwpRenderer {
       custom_headers: {
         establish_call: []
       },
+      custom_parameters: {
+        contact_uri: {}
+      },
       debug: false,
     };
 
@@ -350,7 +361,7 @@ export default class extends lwpRenderer {
       /** TODO: nasty hack because Kazoo appears to be lower-casing the request user... */
       const config_user = this._userAgent._configuration.uri.user;
       const ruri_user = request.ruri.user;
-      if (config_user.toLowerCase() == ruri_user.toLowerCase()) {
+      if (config_user && ruri_user && config_user.toLowerCase() == ruri_user.toLowerCase()) {
         request.ruri.user = config_user;
       }
       return this._userAgent.__proto__.receiveRequest.call(
@@ -359,6 +370,10 @@ export default class extends lwpRenderer {
       );
     };
 
+    if (this._config.custom_parameters.contact_uri) {
+      this._userAgent.registrator().setExtraContactParams(this._config.custom_parameters.contact_uri);
+    }
+  
     if (this._config.custom_headers.register) {
       this._userAgent.registrator().setExtraHeaders(this._config.custom_headers.register);
       console.log(this._userAgent);

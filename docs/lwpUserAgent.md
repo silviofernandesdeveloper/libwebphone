@@ -113,13 +113,16 @@ Returns:
 
 Updates the redial target.
 
-#### call(target, custom_headers, anonymous)
+#### call(target, custom_headers, anonymous | options)
 
-| Name   | Type   | Default | Description                 |
-| ------ | ------ | ------- | --------------------------- |
-| target | string |         | The target for the new call |
-| custom_headers | array |   []      | A list of strings to add to the INVITE |
-| anonymous | boolean |    false     | Whether the call should be done anonymously |
+| Name                      |  Type   | Default | Description                                                                                         |
+| ------------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------- |
+| target                    | string  |                                                           | The target for the new call                       |
+| custom_headers            | array   | []                                                        | A list of strings to add to the INVITE            |
+| anonymous                 | boolean | false                                                     | Whether the call should be done anonymously       |
+| options              | object  | `{receive_video: false, anonymous: false}`                 | additional call options                           |
+| options.anonymous    | boolean | false                                                     | Whether the call should be done anonymously       |
+| options.receive_video | boolean | false                                                     | Wheter the call should accept remote video stream |
 
 Attempts to create a new call to target, or the redial target if non is provided
 as an argument.
@@ -192,6 +195,7 @@ Re-paint / update all render targets.
 | user_agent.redial               | string                                                                                                    | \*97                   | The initial value for the redial target                                                                                                                                                                                                                                                              |
 | user_agent.custom_headers.establish_call               | array                                                                                                    | []                   | A list of strings to add to every INVITE when establishing a call target                                                                                                                                                                                                                                                              |
 | user_agent.custom_headers.register               | array                                                                                                    | []                   | A list of strings to add to every REGISTER request |
+| user_agent.custom_parameters.contact_uri            | object                                                                                                    | []                   | Object with keys representing the header param name and values representing the Contact header param values. |
 | debug                           | boolean                                                                                                   | false                  | The inital value for the debugging option                                                                                                                                                                                                                                                            |
 | renderTargets                   | array                                                                                                     | []                     | See [lwpRenderer](lwpRenderer.md)                                                                                                                                                                                                                                                                    |
 
